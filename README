@@ -1,0 +1,54 @@
+Credit given to: https://github.com/PetePriority/picoctf-2024 for his approach
+which helped me in solving the problem while also learning new things.
+
+This is my re-attempted solution to flag printer a CTF crypto challenge which
+occured in the PicoCTF2024 CyberSecurity competition.
+
+Context: I participated in picoCTF-2024 2 years ago and this one singular challenge
+still haunts me to this day. I never understood the mathematical analysis that was
+required to solve. But it has been 2 years since and my mathematical rigor is way
+more advanced than when I started so its time to give it another crack!
+
+Part 1
+
+The first step to understanding this problem is learning about lagrange interpolation.
+The algorythm took me some time to understand but I am going to attempt to explain it
+in my own words. Lets say we have N points (X, Y) and our goal is to construct an equation
+such that F(Xi) = Yi for all the points. Well the way lagrange interpolation works is that
+it divides the problem into sub equations. It first picks a point call is P0, and says I
+want to make an equation that has two constraints.
+    - First it must be 0 for all other Xi's that is in our list of N points except..
+    - It must be 1 for P0.X.
+Well to generate an equation that is 0 for a bunch of inputs we can just make a multiplication
+of (X - PJ.X). This way if you inputed any PJ.X the 0 would take over except for the case of P0.X
+since we skip that point. To get the second part of the problem we simplify divide each multiplying
+factor by P0.X - PJ.X this way whenever X is inputed a P0.X all the numerators will equal the 
+denominators and the equation becomes 1. Okay so we have this polynomial equation that is either 0 or 1
+for all our input points with respect to P0. If we now scale this polynomial equation by P0.Y it forces
+the solution range to become 0 or Yi (Assuming X is from one of our points). Now if we create a polynomial
+for each point and add them all up, we gurantee ourselves one equation that when inputing a certain X, all 
+the sub polynomials will go to 0 besides the one created for that X which becomes Yi. Hence we have some
+form of interpolated equation! 
+
+The pseudo-code formula is seen as:
+
+In this case let varX represent some symbolic version of X.
+
+    def subPoly(X, Y, Points):
+        equation = empty
+        for p in Points:
+            if p.X != X:
+                equation *= (varX - p.X) / (X - p.X)
+        
+        return equation * Y
+
+
+    F(X) = Sum([subPoly(P.X, P.Y, Points) for P in points])
+
+    F(Xi) = Yi 
+
+I have written some test code under lagrange.py to illustrate this with real python code that you can use to evalute
+with my test points I created. Great so all we have to do now is just use it for 10 million points....
+This approach is too slow as it takes O(N^2) time complexity to calculate. So how do we optimize it.
+
+Part 2
