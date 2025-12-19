@@ -156,6 +156,18 @@ So the contribution reduces to the constant weight w_i.
 
 The recursion stops here.
 
+For one inividual Xi we essentially boil down our equation from
+Wi * Z(X) / (X - xi)
+to Wi * ZL(X) * ZR(X) / X - xi
+But then notice that if Xi belonged in the left subtree we can take ZR(X) out
+ZR * (wi * ZL(X) / (x - xi))
+Now if ZL(X) is equal to the x-xi we stop here. and this individual sum for an XI becomes ZR * wi
+If it doesnt, we recursivly continue and imagine ZL is the new Z(X). Eventually though we will return a polynomial to multiply to ZR
+
+Same logic applies if Wi corresponded to the Left Side.
+
+But this is simply a recursive logic, where for the top level we have n weights, then we have half the weights for the left and half the weigths for the right
+If we compute each Xi and add them up we win. And we can do this in O(n Log N time)
 ---
 
 ## Step 7 — Final Output
