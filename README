@@ -9,7 +9,7 @@ still haunts me to this day. I never understood the mathematical analysis that w
 required to solve. But it has been 2 years since and my mathematical rigor is way
 more advanced than when I started so its time to give it another crack!
 
-Part 1
+## Step 1
 
 The first step to understanding this problem is learning about lagrange interpolation.
 The algorythm took me some time to understand but I am going to attempt to explain it
@@ -51,4 +51,126 @@ I have written some test code under lagrange.py to illustrate this with real pyt
 with my test points I created. Great so all we have to do now is just use it for 10 million points....
 This approach is too slow as it takes O(N^2) time complexity to calculate. So how do we optimize it.
 
-Part 2
+## Step 2 — Barycentric Lagrange Form (Key Optimization)
+
+The naive Lagrange interpolation algorithm recomputes many overlapping products, resulting in an
+O(N²) time complexity. To optimize this, we rewrite the interpolation formula using the
+**barycentric Lagrange form**.
+
+Define:
+
+    Z(x) = ∏ (x - x_i)
+
+Then observe that:
+
+    Z(x) / (x - x_j) = ∏_{i ≠ j} (x - x_i)
+
+Using this identity, the interpolating polynomial can be rewritten as:
+
+    P(x) = Z(x) · Σ [ y_j / Z'(x_j) · 1 / (x - x_j) ]
+
+Where:
+- Z'(x_j) = ∏_{i ≠ j} (x_j - x_i)
+- The derivative gives the Lagrange denominator efficiently
+
+This formulation avoids recomputing the full product for every term and exposes shared structure
+that can be exploited algorithmically.
+
+---
+
+## Step 3 — Subproduct Tree Construction
+
+To efficiently compute Z(x) and its partial products, we build a **subproduct tree**:
+
+- Leaves:        (x - x_i)
+- Internal nodes: product of children
+- Root:          Z(x)
+
+This tree allows:
+- Computing Z(x) once
+- Accessing Z(x) / (x - x_i) via sibling products
+- Reusing intermediate results
+
+The tree is constructed bottom-up in O(n log n) time.
+
+---
+
+## Step 4 — Fast Multipoint Evaluation (`fastEval`)
+
+Key identity used:
+
+    f(x_i) = remainder of f(x) divided by (x - x_i)
+
+This follows from polynomial division:
+
+    f(x) = q(x)(x - x_i) + r  ⇒  f(x_i) = r
+
+Instead of dividing by each (x - x_i) individually (O(N²)), we:
+
+1. Divide f(x) by large subtree polynomials first
+2. Propagate remainders down the tree
+3. Stop at leaves where the divisor is linear
+
+At a leaf, the remainder is a constant equal to f(x_i).
+
+This evaluates f(x) at all points simultaneously in O(n log n).
+
+---
+
+## Step 5 — Computing Barycentric Weights (`calcWeights`)
+
+From barycentric interpolation:
+
+    w_i = y_i / Z'(x_i)
+
+Steps:
+1. Compute Z'(x)
+2. Use fastEval to compute Z'(x_i) for all points
+3. Divide each y_i by the corresponding derivative value
+
+All arithmetic is performed in the finite field GF(p), guaranteeing valid division.
+
+---
+
+## Step 6 — Fast Interpolation (`_fast_interpolate`)
+
+The final polynomial is reconstructed using:
+
+    P(x) = Σ w_i · Z(x) / (x - x_i)
+
+Using the same subproduct tree, we apply divide-and-conquer:
+
+- Split points into left and right halves
+- Recursively compute partial interpolants
+- Multiply by sibling subtree polynomials
+- Combine results
+
+### Base Case
+
+When a subtree contains exactly one point x_i:
+
+    Z(x) = x - x_i
+    Z(x) / (x - x_i) = 1
+
+So the contribution reduces to the constant weight w_i.
+
+The recursion stops here.
+
+---
+
+## Step 7 — Final Output
+
+The resulting interpolating polynomial encodes the flag data directly in its coefficients.
+These coefficients are written out as raw bytes to reconstruct the BMP file required by the challenge.
+
+---
+
+## Summary
+
+This approach reduces polynomial interpolation from O(N²) to O(N log N) by:
+- Rewriting Lagrange interpolation in barycentric form
+- Using a subproduct tree to cache shared structure
+- Replacing evaluation with polynomial remainders
+- Applying divide-and-conquer throughout
+
+While not intuitive, the algorithm is mathematically sound and highly efficient.
